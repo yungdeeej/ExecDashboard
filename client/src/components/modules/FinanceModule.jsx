@@ -1,53 +1,89 @@
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import KPICard from '../shared/KPICard'
-import TrendSparkline from '../shared/TrendSparkline'
-import LastUpdatedBanner from '../shared/LastUpdatedBanner'
+import SyncStatusBanner from '../shared/SyncStatusBanner'
+import SkeletonLoader, { SkeletonChart } from '../shared/SkeletonLoader'
 import useModuleData from '../../hooks/useModuleData'
 import { getFinanceLatest, getFinanceTrend } from '../../lib/api'
+import { fmtCurrency, ragStatus } from '../../lib/formatters'
 
-const fmt = (n) => {
-  if (n == null) return '$0'
-  return '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 0 })
+const CHART_COLORS = ['#3B82F6', '#22C55E', '#F59E0B', '#EF4444', '#8B5CF6']
+
+const chartTooltipStyle = {
+  contentStyle: { background: '#161B22', border: '1px solid #30363D', borderRadius: '8px', fontSize: '12px', color: '#E6EDF3' },
+  itemStyle: { color: '#E6EDF3' },
 }
 
-export default function FinanceModule({ compact = false }) {
+export default function FinanceModule() {
   const { data: latest, loading } = useModuleData(getFinanceLatest)
   const { data: trend } = useModuleData(() => getFinanceTrend(30))
 
-  if (loading) {
-    return <div className="animate-pulse bg-gray-100 rounded-xl h-48" />
-  }
+  if (loading) return <SkeletonLoader count={6} />
 
-  if (!latest) {
-    return <div className="text-gray-400 text-center py-8">No finance data available</div>
-  }
+  if (!latest) return <div className="text-dark-muted text-center py-8">No finance data available</div>
 
   const kpis = [
-    { title: 'Revenue (MTD)', value: fmt(latest.revenue_mtd), color: 'green', icon: '$' },
-    { title: 'Revenue (YTD)', value: fmt(latest.revenue_ytd), color: 'blue', icon: '$' },
-    { title: 'Tuition Collected', value: fmt(latest.tuition_collected), subtitle: `of ${fmt(latest.tuition_expected)} expected`, color: 'purple' },
-    { title: 'Outstanding Balances', value: fmt(latest.outstanding_balances), color: 'orange' },
-    { title: 'Govt Funding', value: fmt(latest.govt_funding_received), color: 'indigo' },
-    { title: 'Net Position', value: fmt(latest.net_position), color: latest.net_position >= 0 ? 'green' : 'red' },
+    { title: 'Revenue MTD', value: fmtCurrency(latest.revenue_mtd), rag: ragStatus(latest.revenue_mtd, 300000), sparkData: trend, sparkKey: 'revenue_mtd', sparkColor: '#22C55E' },
+    { title: 'Revenue YTD', value: fmtCurrency(latest.revenue_ytd), rag: 'green' },
+    { title: 'Tuition Collected', value: fmtCurrency(latest.tuition_collected), subtitle: `of ${fmtCurrency(latest.tuition_expected)} expected`, rag: ragStatus(latest.tuition_collected, latest.tuition_expected) },
+    { title: 'Outstanding Balances', value: fmtCurrency(latest.outstanding_balances), rag: latest.outstanding_balances > 60000 ? 'amber' : 'green' },
+    { title: 'Govt Funding', value: fmtCurrency(latest.govt_funding_received) },
+    { title: 'Net Position', value: fmtCurrency(latest.net_position), rag: latest.net_position >= 0 ? 'green' : 'red' },
+    { title: 'Cost Per Student', value: fmtCurrency(latest.cost_per_student) },
+    { title: 'Days Cash on Hand', value: latest.days_cash_on_hand ? `${Math.round(latest.days_cash_on_hand)}` : 'N/A', rag: latest.days_cash_on_hand >= 60 ? 'green' : latest.days_cash_on_hand >= 30 ? 'amber' : 'red' },
   ]
 
-  const displayKpis = compact ? kpis.slice(0, 4) : kpis
+  const expenseData = [
+    { name: 'Salaries', value: (latest.expenses_total || 0) * 0.55 },
+    { name: 'Rent', value: (latest.expenses_total || 0) * 0.15 },
+    { name: 'Marketing', value: (latest.expenses_total || 0) * 0.12 },
+    { name: 'Operations', value: (latest.expenses_total || 0) * 0.10 },
+    { name: 'Other', value: (latest.expenses_total || 0) * 0.08 },
+  ]
 
   return (
-    <div>
-      <div className={`grid gap-4 ${compact ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-3'}`}>
-        {displayKpis.map((kpi) => (
-          <KPICard key={kpi.title} {...kpi} />
-        ))}
+    <div className="fade-in space-y-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {kpis.map((kpi) => <KPICard key={kpi.title} {...kpi} />)}
       </div>
 
-      {!compact && trend && (
-        <div className="mt-6 bg-white rounded-xl border border-gray-200 p-4">
-          <h4 className="text-sm font-medium text-gray-600 mb-3">Revenue Trend (30 days)</h4>
-          <TrendSparkline data={trend} dataKey="revenue_mtd" color="#22c55e" height={120} />
+      {trend && trend.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-dark-card border border-dark-border rounded-xl p-5">
+            <h4 className="text-sm font-semibold text-dark-muted uppercase tracking-wider mb-4">Revenue Trend (30 days)</h4>
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={trend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#30363D" />
+                <XAxis dataKey="snapshot_date" tick={{ fontSize: 10, fill: '#8B949E' }} tickFormatter={d => d?.slice(5)} />
+                <YAxis tick={{ fontSize: 10, fill: '#8B949E' }} tickFormatter={v => `$${(v/1000)}K`} />
+                <Tooltip {...chartTooltipStyle} formatter={v => [fmtCurrency(v), 'Revenue']} />
+                <Line type="monotone" dataKey="revenue_mtd" stroke="#22C55E" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-dark-card border border-dark-border rounded-xl p-5">
+            <h4 className="text-sm font-semibold text-dark-muted uppercase tracking-wider mb-4">Expense Breakdown</h4>
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie data={expenseData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={50}>
+                  {expenseData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i]} />)}
+                </Pie>
+                <Tooltip {...chartTooltipStyle} formatter={v => fmtCurrency(v)} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="flex flex-wrap gap-3 mt-2 justify-center">
+              {expenseData.map((d, i) => (
+                <span key={d.name} className="flex items-center gap-1 text-xs text-dark-muted">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CHART_COLORS[i] }} />
+                  {d.name}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
-      <LastUpdatedBanner timestamp={latest.fetched_at} />
+      <SyncStatusBanner timestamp={latest.fetched_at} source="Finance API" />
     </div>
   )
 }

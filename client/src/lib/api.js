@@ -10,32 +10,45 @@ export const login = (email, password) => api.post('/auth/login', { email, passw
 export const logout = () => api.post('/auth/logout')
 export const getMe = () => api.get('/auth/me')
 
-// Finance
-export const getFinanceLatest = () => api.get('/finance/latest')
-export const getFinanceTrend = (days = 30) => api.get(`/finance/trend?days=${days}`)
-export const postFinanceEntry = (data) => api.post('/finance/entry', data)
+// Dashboard - Finance
+export const getFinanceLatest = () => api.get('/dashboard/finance/latest')
+export const getFinanceTrend = (days = 30) => api.get(`/dashboard/finance/trend?days=${days}`)
 
-// Enrollment
-export const getEnrollmentSummary = (campus = 'All') => api.get(`/enrollment/summary?campus=${campus}`)
-export const getEnrollmentTrend = (campus = 'All', days = 30) => api.get(`/enrollment/trend?campus=${campus}&days=${days}`)
-export const getEnrollmentEntries = (campus = 'All', limit = 50) => api.get(`/enrollment/entries?campus=${campus}&limit=${limit}`)
-export const postEnrollmentEntry = (data) => api.post('/enrollment/entry', data)
+// Dashboard - Enrollment
+export const getEnrollmentSummary = (campus = 'All') => api.get(`/dashboard/enrollment/summary?campus=${campus}`)
+export const getEnrollmentTrend = (campus = 'All', days = 30) => api.get(`/dashboard/enrollment/trend?campus=${campus}&days=${days}`)
+export const getEnrollmentEntries = (campus = 'All', limit = 50) => api.get(`/dashboard/enrollment/entries?campus=${campus}&limit=${limit}`)
 
-// Outcomes
-export const getOutcomesSummary = (campus = 'All') => api.get(`/outcomes/summary?campus=${campus}`)
-export const getOutcomesStudents = (limit = 100) => api.get(`/outcomes/students?limit=${limit}`)
+// Dashboard - Outcomes
+export const getOutcomesSummary = (campus = 'All') => api.get(`/dashboard/outcomes/summary?campus=${campus}`)
+export const getOutcomesStudents = (limit = 100) => api.get(`/dashboard/outcomes/students?limit=${limit}`)
+
+// Dashboard - Marketing
+export const getMarketingLatest = () => api.get('/dashboard/marketing/latest')
+export const getMarketingTrend = (days = 30) => api.get(`/dashboard/marketing/trend?days=${days}`)
+
+// Dashboard - Staff
+export const getStaffSummary = (campus = 'All') => api.get(`/dashboard/staff/summary?campus=${campus}`)
+export const getStaffTrend = (campus = 'All') => api.get(`/dashboard/staff/trend?campus=${campus}`)
+
+// Dashboard - Alerts
+export const getAlerts = (includeDismissed = false) => api.get(`/dashboard/alerts?dismissed=${includeDismissed}`)
+export const dismissAlert = (id, data) => api.post(`/dashboard/alerts/${id}/dismiss`, data)
+
+// Entry - Enrollment
+export const postEnrollmentEntry = (data) => api.post('/entry/enrollment', data)
+
+// Entry - Outcomes
+export const postOutcomeEntry = (data) => api.post('/entry/outcomes', data)
 export const uploadOutcomesCSV = (file) => {
   const formData = new FormData()
   formData.append('file', file)
-  return api.post('/outcomes/upload', formData, {
+  return api.post('/entry/outcomes/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 }
-export const postOutcomeEntry = (data) => api.post('/outcomes/entry', data)
 
-// Marketing
-export const getMarketingLatest = () => api.get('/marketing/latest')
-export const getMarketingTrend = (days = 30) => api.get(`/marketing/trend?days=${days}`)
-export const postMarketingEntry = (data) => api.post('/marketing/entry', data)
+// Entry - Staff
+export const postStaffEntry = (data) => api.post('/entry/staff', data)
 
 export default api
